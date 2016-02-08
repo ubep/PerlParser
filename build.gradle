@@ -1,0 +1,67 @@
+apply plugin: 'antlr'
+apply plugin: 'java'
+apply plugin: 'eclipse'
+
+sourceCompatibility = 1.7
+
+final GENERATED_MAIN = "src-gen/main/java"
+final GENERATED_TEST = "src-gen/test/java"
+
+sourceSets {
+    main {
+        java { srcDirs += [GENERATED_MAIN] }
+    }
+    main {
+        java { srcDirs += [GENERATED_TEST] }
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    antlr "org.antlr:antlr4:4.5.2"
+}
+
+generateGrammarSource.doFirst {
+    outputDirectory = new File(GENERATED_MAIN)
+}
+generateGrammarSource.doLast {
+    moveAntlrGeneratedFilesToTheirPackages(source, GENERATED_MAIN)
+}
+generateTestGrammarSource.doFirst {
+    outputDirectory = new File(GENERATED_TEST)
+}
+generateTestGrammarSource.doLast {
+    moveAntlrGeneratedFilesToTheirPackages(source, GENERATED_TEST)
+}
+
+def moveAntlrGeneratedFilesToTheirPackages(FileTree grammarFiles, generatedFolder) {
+    grammarFiles.each {File file ->
+        final grammarName = file.name.lastIndexOf('.')>=0 ? file.name[0 .. file.name.lastIndexOf('.')-1] : file.name
+        final grammarPackage = extractPackageNameFromGrammerFile(file)
+        copy {
+            from generatedFolder
+            include "${grammarName}*.*"
+            into generatedFolder + "/" + grammarPackage.replaceAll("\\.", "/")
+        }
+    }
+    project.delete fileTree(generatedFolder).include('*.*')
+}
+
+def extractPackageNameFromGrammerFile(File grammarFile) {
+    def grammarPackage = "unknown.package"
+    def packageRegex = ~/[ ]*package[ ]*([a-zA-Z]+[a-zA-Z0-9.-_]*)[ ]*;/
+    grammarFile.eachLine { line ->
+        def matcher = packageRegex.matcher(line)
+        if (matcher.find()){
+            grammarPackage = matcher.group(1)
+        }
+    }
+    return grammarPackage
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.10'
+}
