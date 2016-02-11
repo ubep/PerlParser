@@ -19,6 +19,16 @@ sub execute {
 
     my $Bla = $self->{$xxx}->{'lala'};
 
+    if ( $Bla > 5 ) {
+        print $Bla;
+    } else {
+        if ( ($Bla < 0) || ( (defined $Obj) && $Obj->{'abc'} < 3) ) {
+
+	    return $Obj;
+
+	}
+    }
+
     return;
 }
 
