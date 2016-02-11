@@ -6,56 +6,74 @@ package com.epages.parser.perl;
 
 
 
-perlpackage : 'package' (ID '::')* ID ';' stmts '1;';
+perlpackage : 'package' packagename ';' stmt* '1;';
 
-stmts : (importstmt | extendstmt | sub)*;
+packagename : (ID '::')* ID;
 
-importstmt : 'use' (ID '::')* ID ';'
-           | 'use' (ID '::')* ID 'qw' '(' ID+ ')' ';'
+stmt : COMMENT
+     | extendstmt ';'
+     | importstmt ';'
+     | sub
+     | assignment ';'
+     | functioncall ';'
+     ;
+
+expr : hash
+     | varname
+     | ID
+     | '\'' ID '\''
+     | functioncall
+     | expr '->' '{' expr '}'
+     | '@_'
+     ;
+
+extendstmt : 'use' 'base' packagename;
+
+importstmt : 'use' (ID '::')* ID
+           | 'use' (ID '::')* ID quotedlist
            ;
 
-extendstmt : 'use' 'base' (ID '::')* ID ';';
+quotedlist : 'qw' '(' ID+ ')';
 
-sub : 'sub' '{' cmds '}';
+sub : 'sub' ID '{' stmt* '}';
 
-cmds : (assignment | functioncall | returnstmt)*;
+assignment : 'my' varname '=' expr;
 
-assignment : 'my' varname '=' value ';';
 
-returnstmt : 'return' value;
 
-value : hash
-      | varname
-      | functioncall
-      | hashrefvar
-      | '@_'
-      ;
+hash : '{' '}'
+     | '{' keyvaluepair (',' keyvaluepair)* ','? '}'
+     ;
 
-hash : '{' hashkeyvalue (',' hashkeyvalue)* ','? '}';
+keyvaluepair : '\'' ID '\'' '=>' expr;
 
-hashkeyvalue : '\'' ID '\'' '=>' value;
+values : ;
 
-hashrefvar : scalarvarname '->' '{' value '}';
-
-values : value (',' value)*;
-
-varname : scalarvarname
-        | '@' ID
-        | '%' ID
+varname : varname_scalar
+        | varname_array
+        | varname_hash
         ;
 
-scalarvarname : '$' ID;
+varname_scalar : '$' ID;
+varname_array : '@' ID;
+varname_hash : '%' ID;
 
 functioncall : functionname
-             | functionname '(' values ')'
-             | functionname values
+             | functionname '(' ')'
+             | functionname '(' expr ( ',' expr )* ')'
+             | functionname expr ( ',' expr )*
              ;
 
 functionname : ID
-             | 'shift'
-             | 'bless'
-             | 'defined'
+             | builtinfunction
              ;
+
+builtinfunction : 'shift'
+                | 'bless'
+                | 'defined'
+                | 'return'
+                ;
+
 
 COMMENT : '#' [a-zA-Z0-9_-\!?${}=,;. ]* '\n';
 ID : [a-zA-Z][a-zA-Z0-9_]*;
